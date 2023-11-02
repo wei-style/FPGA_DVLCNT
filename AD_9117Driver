@@ -1,0 +1,48 @@
+module DA_control(
+input 			clk,
+input 			rst_n,
+output 			SCLK,
+output 			SDIO,
+output 			CS_n
+);
+wire[15:0] Instruct_Register[0:20];
+assign Instruct_Register[0]=16'h0000;
+assign Instruct_Register[1]=16'h0140;
+assign Instruct_Register[2]=16'h02BC;
+assign Instruct_Register[3]=16'h0300;
+assign Instruct_Register[4]=16'h0400;
+assign Instruct_Register[5]=16'h0500;
+assign Instruct_Register[6]=16'h0600;
+assign Instruct_Register[7]=16'h0700;
+assign Instruct_Register[8]=16'h0800;
+assign Instruct_Register[9]=16'h0900;
+assign Instruct_Register[10]=16'h0a00;
+assign Instruct_Register[11]=16'h0b00;
+assign Instruct_Register[12]=16'h0c00;
+assign Instruct_Register[13]=16'h0d00;
+assign Instruct_Register[14]=16'h0e00;
+assign Instruct_Register[15]=16'h0f00;
+assign Instruct_Register[16]=16'h1000;
+assign Instruct_Register[17]=16'h1100;
+assign Instruct_Register[18]=16'h1200;
+assign Instruct_Register[19]=16'h1400;
+assign Instruct_Register[20]=16'h1f0a;
+
+reg[15:0] cnt_BUS;
+assign SCLK=cnt_BUS[2];
+
+wire[15:0] data_store;
+assign SDIO= data_store[15-cnt_BUS[6:3]]&(!CS_n);
+assign CS_n=!cnt_BUS[7];
+wire send_done;
+assign data_store=(!CS_n&(!send_done))?Instruct_Register[cnt_BUS[12:8]]:0;
+assign send_done=(cnt_BUS[12:8]==16'd21);
+always@(posedge clk,negedge rst_n)
+if(!rst_n)
+	cnt_BUS<=0;
+else if(cnt_BUS==16'd5376)
+	cnt_BUS<=cnt_BUS;
+else 
+	cnt_BUS<=cnt_BUS+1;
+
+endmodule
