@@ -1,0 +1,49 @@
+`timescale 1ns / 1ps
+
+module DDS(
+input clk_50M,
+input rst_n,
+output[13:0] sin,
+output[13:0] square,
+output[13:0] trail,
+output[13:0] sawtooth
+    );
+	
+//wire[31:0] cnt_sin,cnt_sqaure,cnt_sawtooth,cnt_trail;
+
+//产生5M的各种信号，频率控制字为1638
+reg[13:0] addra_all;
+always@(posedge clk_50M,negedge rst_n)
+if(!rst_n)
+addra_all<=0;
+else if(addra_all==16384)//样本深度
+addra_all<=0;
+else 
+addra_all<=addra_all+'d1638;
+
+ROM_trail trail_maker (
+  .clka(clk_50M),    // input wire clka
+  .ena(1),      // input wire ena
+  .addra(addra_all),  // input wire [13 : 0] addra
+  .douta(trail)  // output wire [13 : 0] douta
+);
+ROM_Square square_maker (
+  .clka(clk_50M),    // input wire clka
+  .ena(1),      // input wire ena
+  .addra(addra_all),  // input wire [13 : 0] addra
+  .douta(square)  // output wire [13 : 0] douta
+);	
+
+ROM_sin sin_maker (
+  .clka(clk_50M),    // input wire clka
+  .ena(1),      // input wire ena
+  .addra(addra_all),  // input wire [13 : 0] addra
+  .douta(sin)  // output wire [13 : 0] douta
+);
+ROM_sawtooth sawtooth_maker (
+  .clka(clk_50M),    // input wire clka
+  .ena(1),      // input wire ena
+  .addra(addra_all),  // input wire [13 : 0] addra
+  .douta(sawtooth)  // output wire [13 : 0] douta
+);
+endmodule
