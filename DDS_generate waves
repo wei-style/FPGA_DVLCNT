@@ -3,47 +3,47 @@
 module DDS(
 input clk_50M,
 input rst_n,
-output[13:0] sin,
-output[13:0] square,
-output[13:0] trail,
-output[13:0] sawtooth
+output[13:0] sin_10k,
+output[13:0] sin_50k,
+output[13:0] sin_100k,
+output[13:0] sin_1M
     );
-	
-//wire[31:0] cnt_sin,cnt_sqaure,cnt_sawtooth,cnt_trail;
 
-//产生5M的各种信号，频率控制字为1638
-reg[13:0] addra_all;
-always@(posedge clk_50M,negedge rst_n)
-if(!rst_n)
-addra_all<=0;
-else if(addra_all==16384)//样本深度
-addra_all<=0;
-else 
-addra_all<=addra_all+'d1638;
+dds_compiler sin10k (
+  .aclk(clk_50M),                                  // input wire aclk
+  .s_axis_config_tvalid(1),  // input wire s_axis_config_tvalid
+  .s_axis_config_tdata('d13),    // input wire [15 : 0] s_axis_config_tdata
+  .m_axis_data_tvalid(),      // output wire m_axis_data_tvalid
+  .m_axis_data_tdata(sin_10k[13:0]),        // output wire [15 : 0] m_axis_data_tdata
+  .m_axis_phase_tvalid(),    // output wire m_axis_phase_tvalid
+  .m_axis_phase_tdata()      // output wire [15 : 0] m_axis_phase_tdata
+);
+dds_compiler sin50k (
+  .aclk(clk_50M),                                  // input wire aclk
+  .s_axis_config_tvalid(1),  // input wire s_axis_config_tvalid
+  .s_axis_config_tdata('d65),    // input wire [15 : 0] s_axis_config_tdata
+  .m_axis_data_tvalid(),      // output wire m_axis_data_tvalid
+  .m_axis_data_tdata(sin_50k[13:0]),        // output wire [15 : 0] m_axis_data_tdata
+  .m_axis_phase_tvalid(),    // output wire m_axis_phase_tvalid
+  .m_axis_phase_tdata()      // output wire [15 : 0] m_axis_phase_tdata
+);
+dds_compiler sin100k (
+  .aclk(clk_50M),                                  // input wire aclk
+  .s_axis_config_tvalid(1),  // input wire s_axis_config_tvalid
+  .s_axis_config_tdata('d131),    // input wire [15 : 0] s_axis_config_tdata
+  .m_axis_data_tvalid(),      // output wire m_axis_data_tvalid
+  .m_axis_data_tdata(sin_100k[13:0]),        // output wire [15 : 0] m_axis_data_tdata
+  .m_axis_phase_tvalid(),    // output wire m_axis_phase_tvalid
+  .m_axis_phase_tdata()      // output wire [15 : 0] m_axis_phase_tdata
+);
+dds_compiler sin1M (
+  .aclk(clk_50M),                                  // input wire aclk
+  .s_axis_config_tvalid(1),  // input wire s_axis_config_tvalid
+  .s_axis_config_tdata('d1310),    // input wire [15 : 0] s_axis_config_tdata
+  .m_axis_data_tvalid(),      // output wire m_axis_data_tvalid
+  .m_axis_data_tdata(sin_1M[13:0]),        // output wire [15 : 0] m_axis_data_tdata
+  .m_axis_phase_tvalid(),    // output wire m_axis_phase_tvalid
+  .m_axis_phase_tdata()      // output wire [15 : 0] m_axis_phase_tdata
+);
 
-ROM_trail trail_maker (
-  .clka(clk_50M),    // input wire clka
-  .ena(1),      // input wire ena
-  .addra(addra_all),  // input wire [13 : 0] addra
-  .douta(trail)  // output wire [13 : 0] douta
-);
-ROM_Square square_maker (
-  .clka(clk_50M),    // input wire clka
-  .ena(1),      // input wire ena
-  .addra(addra_all),  // input wire [13 : 0] addra
-  .douta(square)  // output wire [13 : 0] douta
-);	
-
-ROM_sin sin_maker (
-  .clka(clk_50M),    // input wire clka
-  .ena(1),      // input wire ena
-  .addra(addra_all),  // input wire [13 : 0] addra
-  .douta(sin)  // output wire [13 : 0] douta
-);
-ROM_sawtooth sawtooth_maker (
-  .clka(clk_50M),    // input wire clka
-  .ena(1),      // input wire ena
-  .addra(addra_all),  // input wire [13 : 0] addra
-  .douta(sawtooth)  // output wire [13 : 0] douta
-);
 endmodule
