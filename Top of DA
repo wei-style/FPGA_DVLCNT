@@ -1,0 +1,116 @@
+`timescale 1ns / 1ps
+
+
+module TOP(
+input sys_clk_p,
+input sys_clk_n,
+input rst_n,
+
+//SPI控制DA1芯片
+output SCLK_DA1,
+output SDIO_DA1,
+output CS_n_DA1,
+output RESET_DA1,
+//主机给DA1芯片提供的数据流与时钟
+output CLKIO_DA1,
+output FSCLK_DA1,
+output[13:0] DA_IQ_DA1,
+
+
+//SPI控制DA2芯片
+output SCLK_DA2,
+output SDIO_DA2,
+output CS_n_DA2,
+output RESET_DA2,
+//主机给DA2芯片提供的数据流与时钟
+output CLKIO_DA2,
+output FSCLK_DA2,
+output[13:0] DA_IQ_DA2
+ );
+
+ wire clk_50M_phase90,clk_50M;
+ 
+
+ //SPI控制DA1芯片
+ //采用一个SPI模块控制两个芯片,且两个芯片配置相同
+ wire SCLK,SDIO,CS_n;
+ DA_control SPI_DA1(
+.clk(clk_50M),
+.rst_n(rst_n),
+.SCLK(SCLK),
+.SDIO(SDIO),
+.CS_n(CS_n)
+);
+assign SCLK_DA1=SCLK;
+assign SDIO_DA1=SDIO;
+assign CS_n_DA1=CS_n;
+assign RESET_DA1=!rst_n;
+
+assign SCLK_DA2=SCLK;
+assign SDIO_DA2=SDIO;
+assign CS_n_DA2=CS_n;
+assign RESET_DA2=!rst_n;
+
+//内部数据产生模块
+wire[13:0] sin_10k,sin_50k,sin_100k,sin_1M;
+DDS Wave_Create(
+.clk_50M(clk_50M),
+.rst_n(rst_n),
+.sin_10k(sin_10k),
+.sin_50k(sin_50k),
+.sin_100k(sin_100k),
+.sin_1M(sin_1M)
+);
+
+//数据输出模块
+//数据送往DA1
+ wire locked;
+DA_IO data_to_DA1(
+.clk_ODDR(clk_50M),
+.rst_n(locked),//锁相环输出稳定时钟后再让DDR开始传输，锁相环稳定后locked会拉高，DDR复位无效，开始传输
+.DA_I(sin_10k),
+.DA_Q(sin_50k),
+.DA_IQ(DA_IQ_DA1)
+    );
+
+//数据送往DA2
+ DA_IO data_to_DA2(
+.clk_ODDR(clk_50M),
+.rst_n(locked),
+.DA_I(sin_100k),
+.DA_Q(sin_1M),
+.DA_IQ(DA_IQ_DA2)
+    );
+ 
+ //输出CLKIO与FSCLK
+ //由于数据是在ODDR中时钟边沿发送的，DA接收也是在边沿接收，数据可能不稳定，所以对输出时钟进行延时，让时钟边沿和数据稳定处对齐
+ //CLKIO本质上是ODDR模块的随路时钟，要让随路时钟与数据中心对齐，让ODDR使用的时钟后移90度即可
+  clk_change PLL
+   (
+    // Clock out ports
+    .clk_out1(clk_50M),     // output clk_out1
+    .clk_out2(clk_50M_phase90),     // output clk_out2
+    // Status and control signals
+    .resetn(rst_n), // input resetn
+    .locked(locked),       // output locked
+   // Clock in ports
+    .clk_in1_p(sys_clk_p),    // input clk_in1_p
+    .clk_in1_n(sys_clk_n));    // input clk_in1_n
+
+ //输出DA1芯片的CLKIO与FSCLK
+ assign CLKIO_DA1=clk_50M_phase90;//由于DDR用的clk时钟，所以直接将clk相移90度即可
+ assign FSCLK_DA1=CLKIO_DA1;
+ //输出DA2芯片的CLKIO与FSCLK
+ assign CLKIO_DA2=clk_50M_phase90;
+ assign FSCLK_DA2=CLKIO_DA2;
+ila ILA (
+	.clk(clk_50M), // input wire clk
+
+
+	.probe0(sin_10k), // input wire [13:0]  probe0  
+	.probe1(sin_50k), // input wire [13:0]  probe1 
+	.probe2(sin_100k), // input wire [13:0]  probe2 
+	.probe3(sin_1M) // input wire [13:0]  probe3
+);
+
+endmodule
