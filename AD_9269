@@ -1,0 +1,43 @@
+module AD_Control(
+input clk_80M,
+input rst_n,
+output SCLK,
+output CS_n,
+output SDIO);
+//0x01 0x02 0x05 0xff
+wire[23:0] Instruct_Register[9:0];
+assign Instruct_Register[0]=24'h00_00_18;//MSB优先
+assign Instruct_Register[1]=24'h00_0C_00;//不执行斩波，也不执行随机选择
+assign Instruct_Register[2]=24'h00_14_21;//交错输出3.3V的补码
+assign Instruct_Register[3]=24'h00_FF_01;//手动将主机数据装载进ADC寄存器，0xff是主从锁存寄存器，它用来缓冲输入的数据，有些寄存器不需要缓冲，而要求及时获得响应
+assign Instruct_Register[4]=24'h00_16_80;//adc内部时钟相位反转
+assign Instruct_Register[5]=24'h00_FF_01;
+assign Instruct_Register[6]=24'h00_05_03;//A,B端口都输出，根据14寄存器，输出3.3V交错数据
+assign Instruct_Register[7]=24'h00_FF_01;
+assign Instruct_Register[8]=24'h00_15_22;//COMS输出深度，默认值 
+assign Instruct_Register[9]=24'h00_FF_01;
+
+reg[15:0]cnt;
+assign SCLK=cnt[1];//对80M时钟4分频为20M
+assign CS_n=!((cnt[7:2]>=24)&&(cnt[7:2]<48));
+//CS_n前24个SCLK为1，之后再拉低24个SCLK,目的是为了让ADC刚上电时稳定。但这不是传输周期，拉低24个SCLk后cnt不会直接重新计SCLK的数量，它会再计数16个SCLK之后再清0（cnt[7:2]计满），所以总的传输周期是64个SCLK，其中有24个SCLK电平让CS_n为低。
+reg[23:0] data_store;//用来存储要发出的数据
+always@(posedge clk_80M,negedge rst_n)
+if(!rst_n)
+data_store<=0;
+else data_store<=Instruct_Register[cnt[11:8]];//CS_n每传输完一个寄存器就计数一次,cnt[X:8]表示Cs_n传输完的次数，这里一共10个寄存器要传送，所以用cnt[11:8]代表是要传输的寄存器
+
+wire send_done;
+assign send_done=cnt==2560;
+wire[5:0] cnt_SCLK;
+assign cnt_SCLK=(cnt[7:2]-24);//前24个SCLK是空跑，目的是让ADC稳定
+assign SDIO=send_done?0:data_store[23-cnt_SCLK]&&(!CS_n);
+
+always@(posedge clk_80M,negedge rst_n)
+if(!rst_n)
+cnt<=0;
+else if(cnt==2560)//传输10次，cnt[11:8]前面是cnt[7:0]一共256个clk，总共10*256=2560个clk
+cnt<=cnt;
+else cnt<=cnt+1'b1;
+
+endmodule
